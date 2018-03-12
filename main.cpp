@@ -23,7 +23,19 @@ template<class T> T read(std::istream& is) {
 class Vector3D {
 public:
     float x, y, z;
+
+    bool operator==(const Vector3D& other) const {
+        return other.x == x && other.y == y && other.z == z;
+    }
 };
+
+namespace std {
+ template <> struct hash<Vector3D> {
+    std::size_t operator()(const Vector3D& v) const {
+      return ((hash<float>()(v.x) ^ (hash<float>()(v.y) << 1)) >> 1) ^ (hash<float>()(v.z) << 1);
+    }
+  };
+}
 
 class Face {
 public:
@@ -48,8 +60,19 @@ public:
     std::string header;
     unsigned int faceCount;
     std::vector<Vector3D> vertices;
-    //std::unordered_map<Vector3D, int> indexMap;
+    std::unordered_map<Vector3D, int> indexMap;
     std::vector<SmartFace> faces;
+
+    int getIndexOf(Vector3D v) {
+        if (indexMap.count(v)) {
+            return indexMap.at(v);
+        } else {
+            int index = vertices.size();
+            indexMap.insert({v, index});
+            vertices.push_back(v);
+            return index;
+        }
+    }
 };
 
 std::string readHeader(std::istream& is) {
@@ -68,25 +91,65 @@ Vector3D readVector3D(std::istream& is) {
     return v;
 }
 
-StlFile basicRead(std::istream& is) {
+StlFile basicRead(char* name) {
 
     StlFile stl;
 
-    stl.header = readHeader(is);
-    stl.faceCount = read<unsigned int>(is);
+    std::ifstream file;
+    file.open(name, std::ios::in | std::ios::binary);
+    if (!file.is_open()) {
+        std::cerr << "Unable to open " << name << std::endl;
+        return stl;
+    }
+
+    stl.header = readHeader(file);
+    stl.faceCount = read<unsigned int>(file);
     stl.faces.reserve(stl.faceCount);
 
     char color_buffer[COLOR_SIZE];
     for (unsigned int i = 0; i < stl.faceCount; ++i) {
         Face face;
-        face.normal = readVector3D(is);
-        face.A = readVector3D(is);
-        face.B = readVector3D(is);
-        face.C = readVector3D(is);
+        face.normal = readVector3D(file);
+        face.A = readVector3D(file);
+        face.B = readVector3D(file);
+        face.C = readVector3D(file);
         stl.faces.push_back(face);
-        is.read(color_buffer, COLOR_SIZE);
+        file.read(color_buffer, COLOR_SIZE);
     }
 
+    file.close();
+    return stl;
+}
+
+SmartStlFile smartRead(char* name) {
+
+    SmartStlFile stl;
+
+    std::ifstream file;
+    file.open(name, std::ios::in | std::ios::binary);
+    if (!file.is_open()) {
+        std::cerr << "Unable to open " << name << std::endl;
+        return stl;
+    }
+
+    stl.header = readHeader(file);
+    stl.faceCount = read<unsigned int>(file);
+    stl.faces.reserve(stl.faceCount);
+    stl.vertices.reserve(stl.faceCount);
+    stl.indexMap.reserve(stl.faceCount);
+
+    char color_buffer[COLOR_SIZE];
+    for (unsigned int i = 0; i < stl.faceCount; ++i) {
+        SmartFace face;
+        face.normal = readVector3D(file);
+        face.A = stl.getIndexOf(readVector3D(file));
+        face.B = stl.getIndexOf(readVector3D(file));
+        face.C = stl.getIndexOf(readVector3D(file));
+        stl.faces.push_back(face);
+        file.read(color_buffer, COLOR_SIZE);
+    }
+
+    file.close();
     return stl;
 }
 
@@ -97,16 +160,16 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    std::ifstream file;
-    file.open(argv[1], std::ios::in | std::ios::binary);
-    if (!file.is_open()) {
-        std::cerr << "Unable to open " << argv[1] << std::endl;
-        return 1;
-    }
-
     auto start = steady_clock::now();
-    StlFile stl = basicRead(file);
+    StlFile stl = basicRead(argv[1]);
     std::cout << "Basic read time: " << duration_cast<milliseconds>(steady_clock::now() - start).count() << "ms\n";
+    std::cout << "FaceCount: " << stl.faceCount << std::endl << std::endl;
+
+    start = steady_clock::now();
+    SmartStlFile smartStl = smartRead(argv[1]);
+    std::cout << "Smart read time: " << duration_cast<milliseconds>(steady_clock::now() - start).count() << "ms\n";
+    std::cout << "FaceCount: " << smartStl.faceCount << std::endl;
+    std::cout << "Vertex Count: " << smartStl.vertices.size() << std::endl << std::endl;
 
     return 0;
 }
