@@ -7,7 +7,7 @@ Here are some results for reading in an stl file with 295,645 faces and 149,281 
 
 | Language | Basic Parse (ms) | Smart Parse (ms) | Source |
 | --- | --- | --- | --- |
-| C++ | 116 | 372 | [repo](https://github.com/jamethy/cpp-stl-loader) |
+| C++ | 72 | 170 | [repo](https://github.com/jamethy/cpp-stl-loader) |
 | Go | 758 | 1,535 | [repo](https://github.com/jamethy/go-stl-loader) |
 | Java | 344 | 413 | private |
 | Javascript | 217 | dunno | [sample](https://threejs.org/examples/webgl_loader_stl.html) |
