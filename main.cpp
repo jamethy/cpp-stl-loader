@@ -1,5 +1,5 @@
 
-// $CXX -std=c++11 main.cpp && ./a.out /path/to/file
+// $CXX -O3 -std=c++11 main.cpp && ./a.out /path/to/file
 
 #include <iostream>
 #include <fstream>
